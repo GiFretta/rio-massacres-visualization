@@ -1,0 +1,14 @@
+{
+  "name": "rio-massacres-visualization",
+  "version": "1.0.0",
+  "description": "Interactive D3.js visualizations of massacres in Rio de Janeiro",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx http-server"
+  },
+  "keywords": ["d3js", "data-visualization", "rio-de-janeiro"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {}
+}
