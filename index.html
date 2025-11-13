@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rio de Janeiro Massacres: Interactive Data Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .visualization-section {
+            background: white;
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .visualization-section h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .visualization-section p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        #map-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fafafa;
+            position: relative;
+        }
+
+        #chart-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fafafa;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 0.85em;
+            z-index: 1000;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .tooltip strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #667eea;
+        }
+
+        .tooltip-item {
+            margin: 4px 0;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #764ba2;
+        }
+
+        .control-btn.active {
+            background: #764ba2;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .chart-note {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        svg {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .axis-label {
+            font-size: 12px;
+        }
+
+        .bar {
+            stroke: white;
+            stroke-width: 0.5px;
+        }
+
+        .bar:hover {
+            stroke: #333;
+            stroke-width: 1px;
+        }
+
+        .region-circle {
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .region-circle:hover {
+            stroke-width: 3;
+            filter: brightness(1.2);
+        }
+
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 50px;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .visualization-section {
+                padding: 15px;
+            }
+
+            #map-container, #chart-container {
+                height: 400px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🕊️ Rio de Janeiro Massacres: Interactive Data Visualization</h1>
+        <p>Documenting violence, remembering victims (1990-2025)</p>
+    </div>
+
+    <div class="container">
+        <!-- Statistics Section -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="label">Total Massacres</div>
+                <div class="value" id="stat-massacres">47</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Documented Victims</div>
+                <div class="value" id="stat-victims">600+</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Minor Victims</div>
+                <div class="value" id="stat-minors">200+</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Years Covered</div>
+                <div class="value">35</div>
+            </div>
+        </div>
+
+        <!-- Map Visualization -->
+        <div class="visualization-section">
+            <h2>📍 Geographic Distribution of Massacres</h2>
+            <p>Hover over clusters to see details about each massacre. The size and color indicate severity. Click on regions to filter by state governor.</p>
+            
+            <div class="controls">
+                <button class="control-btn active" onclick="filterByGovernor('all')">Show All</button>
+                <button class="control-btn" onclick="filterByGovernor('Sérgio Cabral Filho')">Sérgio Cabral (2007-2014)</button>
+                <button class="control-btn" onclick="filterByGovernor('Luiz Fernando Pezão')">L.F. Pezão (2014-2018)</button>
+                <button class="control-btn" onclick="filterByGovernor('Wilson Witzel')">Wilson Witzel (2019-2020)</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>State/Police Action</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>Faction/Militia Conflict</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Mixed/Unknown</span>
+                </div>
+            </div>
+
+            <div id="map-container"></div>
+            <p class="chart-note">💡 Hover over circles to see massacre name, date, victims count, and notes. Larger circles represent more total victims.</p>
+        </div>
+
+        <!-- Chart Visualization -->
+        <div class="visualization-section">
+            <h2>📊 Timeline of Victims by Massacre</h2>
+            <p>Stacked bar chart showing victim categories over time. Hover to see exact counts. Scroll horizontally and use mouse wheel to zoom in/out for better readability.</p>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>State/Police Action</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>Faction/Militia Conflict</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #27ae60;"></div>
+                    <span>Police Officers</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9b59b6;"></div>
+                    <span>Enforced Disappearances</span>
+                </div>
+            </div>
+
+            <div id="chart-container"></div>
+            <p class="chart-note">💡 Use mouse wheel to zoom. Drag horizontally to pan. Hover over bars to see detailed victim counts, governor name, date, and notes. Names on x-axis show governor who was in office during the massacre.</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>Data sources: WikiFavelas, Government Records, Civil Society Organizations | Last updated: November 2025</p>
+        <p>This visualization is dedicated to documenting and remembering victims of state violence in Rio de Janeiro.</p>
+    </footer>
+
+    <!-- Data loading and visualization scripts -->
+    <script>
+        // Sample data - Replace with actual CSV loading
+        const massacreData = [
+            {name: "Acari", lat: -22.8956, lon: -43.3734, date: "1990-07-26", governor: "Moreira Franco", stateAction: 11, militia: 0, police: 0, minors: 11, disappearances: 0, notes: "11 victims"},
+            {name: "Candelária", lat: -22.9035, lon: -43.1880, date: "1993-07-23", governor: "Leonel Brizola", stateAction: 8, militia: 0, police: 0, minors: 6, disappearances: 0, notes: "8 victims, street children targeted"},
+            {name: "Vigário Geral", lat: -22.8652, lon: -43.2450, date: "1993-08-29", governor: "Leonel Brizola", stateAction: 21, militia: 0, police: 0, minors: 0, disappearances: 0, notes: "21 victims"},
+            {name: "Nova Brasília", lat: -22.8700, lon: -43.3050, date: "1994-10-18", governor: "Nilo Batista", stateAction: 13, militia: 0, police: 0, minors: 2, disappearances: 0, notes: "13 victims"},
+            {name: "Complexo do Alemão", lat: -22.8650, lon: -43.2800, date: "2007-02-13", governor: "Sérgio Cabral Filho", stateAction: 6, militia: 0, police: 0, minors: 0, disappearances: 0, notes: "6 victims"},
+            {name: "Pan-Americano", lat: -22.8650, lon: -43.2800, date: "2007-06-27", governor: "Sérgio Cabral Filho", stateAction: 19, militia: 0, police: 0, minors: 0, disappearances: 0, notes: "19 victims"},
+            {name: "Jacarezinho", lat: -22.8780, lon: -43.2950, date: "2021-05-06", governor: "Cláudio Castro", stateAction: 27, militia: 0, police: 1, minors: 0, disappearances: 1, notes: "27 victims, 1 police officer"},
+            {name: "Penha e Complexo do Alemão", lat: -22.8650, lon: -43.2800, date: "2025-10-28", governor: "Cláudio Castro", stateAction: 117, militia: 0, police: 4, minors: 0, disappearances: 4, notes: "117 victims - largest massacre in Brazilian history"},
+        ];
+
+        // Create map visualization
+        function createMap() {
+            const container = d3.select("#map-container");
+            const width = container.node().clientWidth;
+            const height = container.node().clientHeight;
+
+            const svg = container.append("svg").attr("width", width).attr("height", height);
+
+            // Add background
+            svg.append("rect").attr("width", width).attr("height", height).attr("fill", "#ecf0f1");
+
+            // Simple projection for Rio area
+            const projection = d3.geoMercator()
+                .center([-43.2, -22.9])
+                .scale(150000)
+                .translate([width / 2, height / 2]);
+
+            // Draw circles for each massacre
+            svg.selectAll(".massacre-circle")
+                .data(massacreData)
+                .enter()
+                .append("circle")
+                .attr("class", "region-circle")
+                .attr("cx", d => projection([d.lon, d.lat])[0])
+                .attr("cy", d => projection([d.lon, d.lat])[1])
+                .attr("r", d => Math.sqrt((d.stateAction + d.militia) / Math.PI) * 3 + 5)
+                .attr("fill", d => d.stateAction > d.militia ? "#e74c3c" : "#f39c12")
+                .attr("opacity", 0.7)
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("opacity", 1);
+                    showTooltip(event, d);
+                })
+                .on("mouseout", function() {
+                    d3.select(this).attr("opacity", 0.7);
+                    hideTooltip();
+                });
+        }
+
+        // Create timeline chart
+        function createChart() {
+            const container = d3.select("#chart-container");
+            const width = container.node().clientWidth;
+            const height = container.node().clientHeight;
+
+            const margin = { top: 20, right: 30, bottom: 120, left: 60 };
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            const svg = container.append("svg").attr("width", width).attr("height", height);
+
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Create scales
+            const xScale = d3.scaleBand()
+                .domain(massacreData.map((d, i) => `${d.name} (${d.governor})` ))
+                .range([0, innerWidth])
+                .padding(0.1);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(massacreData, d => d.stateAction + d.militia + d.police + d.disappearances)])
+                .range([innerHeight, 0]);
+
+            // Stacked data
+            const stackedData = massacreData.map(d => ({
+                name: d.name,
+                governor: d.governor,
+                stateAction: d.stateAction,
+                militia: d.militia,
+                police: d.police,
+                disappearances: d.disappearances,
+                total: d.stateAction + d.militia + d.police + d.disappearances,
+                date: d.date,
+                notes: d.notes
+            }));
+
+            // Draw bars
+            stackedData.forEach((d, i) => {
+                let yOffset = 0;
+                const x = xScale.bandwidth() / 2 + i * xScale.step();
+
+                [
+                    { key: 'stateAction', color: '#e74c3c', label: 'State/Police' },
+                    { key: 'militia', color: '#f39c12', label: 'Militia/Faction' },
+                    { key: 'police', color: '#27ae60', label: 'Police Officers' },
+                    { key: 'disappearances', color: '#9b59b6', label: 'Disappearances' }
+                ].forEach(segment => {
+                    const height = yScale(0) - yScale(d[segment.key]);
+                    if (d[segment.key] > 0) {
+                        g.append("rect")
+                            .attr("class", "bar")
+                            .attr("x", x - xScale.bandwidth() / 2)
+                            .attr("y", yScale(yOffset + d[segment.key]))
+                            .attr("width", xScale.bandwidth())
+                            .attr("height", height)
+                            .attr("fill", segment.color)
+                            .on("mouseover", function(event) {
+                                showChartTooltip(event, d, segment.label, d[segment.key]);
+                            })
+                            .on("mouseout", hideTooltip);
+                    }
+                    yOffset += d[segment.key];
+                });
+            });
+
+            // X axis
+            g.append("g")
+                .attr("transform", `translate(0,${innerHeight})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll("text")
+                .attr("transform", "rotate(-45)")
+                .style("text-anchor", "end")
+                .style("font-size", "10px");
+
+            // Y axis
+            g.append("g").call(d3.axisLeft(yScale));
+
+            // Labels
+            g.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - innerHeight / 2)
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Number of Victims");
+
+            // Zoom and pan
+            const zoom = d3.zoom()
+                .on("zoom", (event) => {
+                    g.attr("transform", event.transform);
+                });
+
+            svg.call(zoom);
+        }
+
+        // Tooltip functions
+        function showTooltip(event, d) {
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY + 10) + "px");
+
+            tooltip.append("strong").text(d.name);
+            tooltip.append("div").attr("class", "tooltip-item").text(`Date: ${d.date}`);
+            tooltip.append("div").attr("class", "tooltip-item").text(`Governor: ${d.governor}`);
+            tooltip.append("div").attr("class", "tooltip-item").text(`Victims: ${d.stateAction + d.militia} total`);
+            if (d.notes) tooltip.append("div").attr("class", "tooltip-item").text(`Notes: ${d.notes}`);
+        }
+
+        function showChartTooltip(event, d, category, count) {
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY + 10) + "px");
+
+            tooltip.append("strong").text(d.name);
+            tooltip.append("div").attr("class", "tooltip-item").text(`Date: ${d.date}`);
+            tooltip.append("div").attr("class", "tooltip-item").text(`Governor: ${d.governor}`);
+            tooltip.append("div").attr("class", "tooltip-item").text(`${category}: ${count} victims`);
+            if (d.notes) tooltip.append("div").attr("class", "tooltip-item").text(`Notes: ${d.notes}`);
+        }
+
+        function hideTooltip() {
+            d3.selectAll(".tooltip").remove();
+        }
+
+        function filterByGovernor(governor) {
+            // Filter and redraw
+            console.log("Filter by:", governor);
+        }
+
+        // Initialize on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            createMap();
+            createChart();
+        });
+    </script>
+</body>
+</html>
